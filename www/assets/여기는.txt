@@ -1,0 +1,3 @@
+#여기는 환율실시간으로 받는곳
+
+#node scripts/update_rates.js 하면 코드업그레이드

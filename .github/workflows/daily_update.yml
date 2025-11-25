@@ -1,0 +1,37 @@
+name: Daily Rates Update
+
+on:
+  schedule:
+    # 한국 시간 매일 오전 6시 (UTC 21:00)
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-rates:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Run Update Script
+        run: node scripts/update_rates.js
+
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name 'Currency Bot'
+          git config --global user.email 'bot@noreply.github.com'
+          
+          # [수정] www 안에 있는 파일을 커밋하도록 지정
+          git add www/assets/rates.json
+          
+          # 변경사항 없으면 에러 무시
+          git commit -m "🤖 Auto-update: Exchange rates" || echo "No changes to commit"
+          git push

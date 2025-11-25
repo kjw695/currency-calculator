@@ -1,0 +1,1194 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <!-- 앱처럼 보이기 위해 user-scalable=no 유지 및 viewport-fit=cover 필수 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#ffffff"> <!-- 초기 색상 흰색으로 설정 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    
+    <title>워니계산기</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/css/flag-icons.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    
+    <style>
+        /* 라이트 모드 */
+        :root {
+            --primary-color: #3F51B5;
+            --primary-light: #E8EAF6;
+            --background-color: #F0F2F5;
+            --white: #FFFFFF;
+            --text-primary: #111111;
+            --text-secondary: #888888;
+            --divider: #E0E0E0;
+            --delete-color: #E53935;
+            --edit-color: #1976D2;
+            --share-color: #4CAF50;
+            --favorite-color: #FFC107;
+            --check-color: #4CAF50;
+            --pin-color: #BDBDBD;
+            --pin-active: #3F51B5;
+            --keypad-bg: #FFFFFF;
+            --keypad-btn-bg: transparent;
+            --keypad-btn-active: #f0f0f0;
+            --chip-bg: #FFFFFF;
+            --chip-border: #ddd;
+            --chip-text: #444;
+            --ad-bg: #f1f1f1;
+        }
+
+        /* 다크 모드 */
+        [data-theme="dark"] {
+            --primary-color: #7986CB;
+            --primary-light: #28293D;
+            --background-color: #121212;
+            --white: #1E1E1E;
+            --text-primary: #E0E0E0;
+            --text-secondary: #AAAAAA;
+            --divider: #333333;
+            --delete-color: #EF5350;
+            --edit-color: #64B5F6;
+            --share-color: #81C784;
+            --favorite-color: #FFD54F;
+            --check-color: #81C784;
+            --pin-color: #555;
+            --pin-active: #7986CB;
+            --keypad-bg: #1E1E1E;
+            --keypad-btn-bg: #2C2C2C;
+            --keypad-btn-active: #3C3C3C;
+            --chip-bg: #2C2C2C;
+            --chip-border: #444;
+            --chip-text: #E0E0E0;
+            --ad-bg: #252525;
+        }
+
+        /* [수정] 앱 느낌을 위한 핵심 CSS 변경 */
+        body {
+            margin: 0; padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-primary);
+            display: flex; flex-direction: column; 
+            height: 100dvh; 
+            font-family: 'Roboto', 'Noto Sans KR', sans-serif;
+            overflow: hidden; 
+            
+            /* 1. 텍스트 선택 방지 (앱처럼) */
+            user-select: none;
+            -webkit-user-select: none;
+            
+            /* 2. 스크롤 튕김(바운스) 방지 */
+            overscroll-behavior-y: none;
+            
+            /* 3. 터치 하이라이트 제거 */
+            -webkit-tap-highlight-color: transparent;
+            
+            padding-top: env(safe-area-inset-top);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 4. 길게 누르기 메뉴(복사 등) 방지 */
+        * {
+            -webkit-touch-callout: none;
+        }
+
+        /* 5. 입력창은 선택 가능해야 함 */
+        input, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+
+        /* 헤더 */
+        .header {
+            height: 56px; background-color: var(--white);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); 
+            z-index: 10; flex-shrink: 0; transition: background-color 0.3s;
+        }
+        .header-title-group { display: flex; flex-direction: column; }
+        .header-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        .last-updated { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        
+        .header-buttons { display: flex; align-items: center; }
+        .icon-btn { 
+            border: none; background: none; font-size: 18px; color: var(--text-primary); 
+            cursor: pointer; padding: 8px; border-radius: 50%;
+        }
+        .icon-btn:active { background-color: var(--keypad-btn-active); color: var(--primary-color); }
+
+        /* 리스트 영역 */
+        .recycler-view {
+            flex: 1; overflow-y: auto; background-color: var(--background-color);
+            -webkit-overflow-scrolling: touch; padding-bottom: 10px;
+            /* 스크롤 바 숨기기 */
+            scrollbar-width: none; 
+        }
+        .recycler-view::-webkit-scrollbar { display: none; }
+
+        .list-item {
+            display: flex; align-items: center;
+            background-color: var(--white); border-bottom: 1px solid var(--divider);
+            position: relative; transition: background-color 0.1s;
+            height: 72px;
+        }
+        .list-item.sortable-ghost { opacity: 0.5; background: var(--divider); } 
+        .list-item.selected { background-color: var(--primary-light); }
+        .list-item.selected::before {
+            content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+            width: 4px; background-color: var(--primary-color);
+        }
+
+        /* 왼쪽: 핀 + 국기 */
+        .item-left {
+            display: flex; align-items: center; padding-left: 10px;
+            width: 150px; flex-shrink: 0;
+        }
+        .pin-btn {
+            padding: 10px 6px; color: var(--pin-color); cursor: pointer; font-size: 16px;
+            transition: color 0.2s, transform 0.2s;
+        }
+        .pin-btn.active { color: var(--pin-active); transform: scale(1.1); }
+
+        .flag-wrapper {
+            cursor: pointer; padding: 4px; border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        .flag-wrapper:active { background-color: var(--divider); }
+        
+        .flag-icon {
+            width: 36px; height: 24px; border-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            display: flex; justify-content: center; align-items: center; font-size: 24px; background: #eee;
+        }
+        .country-info { margin-left: 8px; display: flex; flex-direction: column; justify-content: center; pointer-events: none; }
+        .country-name { font-size: 13px; font-weight: 700; color: var(--text-primary); margin-bottom: 2px; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 110px;}
+        .currency-code { font-size: 10px; color: var(--text-secondary); }
+        .list-item.selected .country-name { color: var(--primary-color); }
+
+        /* 중앙: 환율 정보 */
+        .item-center {
+            position: absolute; left: 50%; bottom: 8px; transform: translateX(-50%);
+            font-size: 12px; color: var(--text-secondary); font-weight: 500;
+            white-space: nowrap; pointer-events: none;
+        }
+        .list-item.selected .item-center { color: var(--primary-color); opacity: 0.7; }
+
+        /* 오른쪽: 금액 + 단위 */
+        .item-right {
+            flex: 1; display: flex; flex-direction: column; 
+            align-items: flex-end; justify-content: center;
+            padding-right: 16px; cursor: pointer; margin-bottom: 10px; 
+        }
+        .amount-text {
+            font-size: 20px; font-weight: 700; color: var(--text-primary);
+            text-align: right; white-space: nowrap; margin-bottom: 2px;
+        }
+        .unit-text { 
+            font-size: 12px; font-weight: 500; color: var(--text-secondary); 
+            text-align: right; white-space: nowrap;
+        }
+        .list-item.selected .amount-text { color: var(--primary-color); font-size: 24px; }
+        .list-item.selected .unit-text { color: var(--primary-color); font-weight: 700; }
+
+        /* 빠른 버튼 */
+        .quick-btn-scroll {
+            background-color: var(--background-color); padding: 10px 0; overflow-x: auto;
+            border-top: 1px solid var(--divider); flex-shrink: 0;
+            overscroll-behavior-x: none; /* 가로 스크롤 튕김 방지 */
+        }
+        .quick-btn-scroll::-webkit-scrollbar { display: none; }
+        .quick-btn-container { display: flex; padding: 0 16px; gap: 8px; padding-right: 20px; }
+        .quick-chip {
+            background-color: var(--chip-bg); border: 1px solid var(--chip-border); border-radius: 16px;
+            padding: 8px 16px; font-size: 14px; font-weight: 600; color: var(--chip-text);
+            cursor: pointer; box-shadow: 0 1px 2px rgba(0,0,0,0.05); flex-shrink: 0;
+        }
+        .quick-chip.edit-chip { border-color: var(--primary-color); color: var(--primary-color); }
+        .quick-chip:active { background-color: var(--primary-light); color: var(--primary-color); transform: scale(0.96); }
+
+        /* 키패드 */
+        .keypad-layout {
+            background-color: var(--keypad-bg); padding: 4px; 
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.05); z-index: 20; flex-shrink: 0;
+            transition: background-color 0.3s;
+        }
+        .keypad-row { display: flex; justify-content: space-between; }
+        .keypad-btn {
+            flex: 1; height: 52px; border: none; background: var(--keypad-btn-bg);
+            font-size: 24px; color: var(--text-primary); cursor: pointer; border-radius: 12px; margin: 2px;
+            /* 버튼 누를 때 하이라이트 효과 제거 (커스텀 active 사용 위해) */
+            -webkit-tap-highlight-color: transparent;
+        }
+        .keypad-btn:active { background-color: var(--keypad-btn-active); }
+        .btn-delete { color: var(--delete-color); }
+
+        /* 광고 영역 (실제 애드몹 SDK 연동 시 이 영역 위에 오버레이되거나 교체됨) */
+        .ad-container {
+            /* 앱에서는 네이티브 배너가 뜨므로 0으로 줄이거나 숨김 처리 권장 */
+            /* 개발 중 확인을 위해 최소 높이 유지하되, 배포 시 display:none 고려 */
+            min-height: 60px; width: 100%;
+            background-color: var(--ad-bg);
+            display: flex; align-items: center; justify-content: center;
+            color: var(--text-secondary); font-size: 12px; flex-shrink: 0; 
+            border-top: 1px solid var(--divider);
+            padding-bottom: calc(10px + env(safe-area-inset-bottom));
+            box-sizing: content-box; 
+        }
+        
+        /* 모달 공통 */
+        .modal-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); display: none; 
+            justify-content: center; align-items: flex-end; z-index: 50;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        .modal-overlay.active { display: flex; opacity: 1; }
+        .modal-content {
+            background-color: var(--white); width: 100%; height: 85%;
+            border-top-left-radius: 20px; border-top-right-radius: 20px;
+            display: flex; flex-direction: column; transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.3s;
+            padding-bottom: calc(20px + env(safe-area-inset-bottom));
+            color: var(--text-primary);
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header {
+            padding: 16px; border-bottom: 1px solid var(--divider);
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .modal-title { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+        
+        .search-bar { padding: 10px 16px; border-bottom: 1px solid var(--divider); }
+        .search-input {
+            width: 100%; padding: 10px; border: 1px solid var(--chip-border); border-radius: 8px;
+            font-size: 16px; box-sizing: border-box; outline: none; 
+            background: var(--background-color); color: var(--text-primary);
+        }
+        .modal-list { flex: 1; overflow-y: auto; overscroll-behavior-y: contain; }
+
+        /* 설정 메뉴 */
+        .settings-item {
+            padding: 16px 20px; border-bottom: 1px solid var(--divider); font-size: 16px;
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer; color: var(--text-primary);
+        }
+        .lang-toggle { display: flex; background: var(--background-color); border-radius: 16px; padding: 2px; }
+        .lang-btn {
+            padding: 4px 12px; border-radius: 14px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; 
+            color: var(--text-secondary); background: transparent;
+        }
+        .lang-btn.active { background: var(--white); color: var(--primary-color); box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+
+        /* 토스트 */
+        #toast {
+            visibility: hidden; min-width: 200px; background-color: rgba(0,0,0,0.8); color: #fff;
+            text-align: center; border-radius: 25px; padding: 10px 20px; position: fixed; z-index: 100;
+            left: 50%; bottom: 120px; transform: translateX(-50%); font-size: 14px; opacity: 0;
+            transition: opacity 0.3s;
+        }
+        #toast.show { visibility: visible; opacity: 1; }
+        
+        /* 빠른 금액 편집 리스트 */
+        .quick-edit-item {
+            padding: 12px 20px; border-bottom: 1px solid var(--divider); display: flex; justify-content: space-between; align-items: center;
+        }
+        .quick-edit-input { 
+            width: 120px; padding: 8px; border: 1px solid var(--chip-border); border-radius: 4px; 
+            background: var(--background-color); color: var(--text-primary); font-size: 16px; text-align: right;
+        }
+
+        /* 통화 목록, 기록 리스트 공통 스타일 */
+        .currency-option, .history-item {
+            padding: 12px 16px; display: flex; align-items: center; justify-content: space-between;
+            border-bottom: 1px solid var(--divider); cursor: pointer;
+        }
+        .currency-details { display: flex; align-items: center; }
+        .action-controls { display: flex; align-items: center; }
+        
+        .favorite-toggle-btn {
+            background: none; border: none; color: var(--text-secondary); cursor: pointer;
+            padding: 8px; font-size: 20px; margin-right: 4px;
+        }
+        .favorite-toggle-btn.is-favorite { color: var(--favorite-color); }
+        .selection-check-icon { font-size: 22px; color: var(--text-secondary); width: 24px; text-align: center; }
+        .selection-check-icon.checked { color: var(--check-color); }
+
+        /* 기록 아이템 전용 */
+        .history-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+        .history-val { font-size: 16px; font-weight: bold; color: var(--text-primary); }
+        .history-btn-group { display: flex; gap: 12px; }
+        .history-action-btn { border: none; background: none; font-size: 18px; cursor: pointer; padding: 6px; }
+        .btn-share { color: var(--share-color); }
+        .btn-edit { color: var(--edit-color); }
+        .btn-del { color: var(--delete-color); }
+
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="header-title-group">
+            <span class="header-title" id="appTitle">워니계산기</span>
+            <span class="last-updated" id="lastUpdatedText">--</span>
+        </div>
+        <div class="header-buttons">
+            <button class="icon-btn" title="업데이트" onclick="forceUpdateRates()"><i class="fas fa-arrows-rotate"></i></button>
+            <button class="icon-btn" title="기록 보기" onclick="toggleHistoryModal(true)"><i class="fas fa-clock-rotate-left"></i></button>
+            <button class="icon-btn" title="저장" onclick="saveHistory()"><i class="fas fa-save"></i></button>
+            <button class="icon-btn" title="설정" onclick="openSettingsModal()"><i class="fas fa-gear"></i></button>
+        </div>
+    </div>
+
+    <div class="recycler-view" id="currencyListContainer"></div>
+
+    <div class="quick-btn-scroll">
+        <div class="quick-btn-container" id="quickButtons"></div>
+    </div>
+
+    <div class="keypad-layout">
+        <div class="keypad-row">
+            <button class="keypad-btn" data-value="7">7</button><button class="keypad-btn" data-value="8">8</button><button class="keypad-btn" data-value="9">9</button>
+        </div>
+        <div class="keypad-row">
+            <button class="keypad-btn" data-value="4">4</button><button class="keypad-btn" data-value="5">5</button><button class="keypad-btn" data-value="6">6</button>
+        </div>
+        <div class="keypad-row">
+            <button class="keypad-btn" data-value="1">1</button><button class="keypad-btn" data-value="2">2</button><button class="keypad-btn" data-value="3">3</button>
+        </div>
+        <div class="keypad-row">
+            <button class="keypad-btn" data-value=".">.</button><button class="keypad-btn" data-value="0">0</button>
+            <button class="keypad-btn btn-delete" data-value="DEL" id="deleteButton"><i class="fas fa-delete-left"></i></button>
+        </div>
+    </div>
+
+    <!-- 
+      [수정] 구글 AdMob 영역 
+      네이티브 AdMob 플러그인을 사용하면 이 div는 필요 없거나, 
+      크기를 맞춰서 투명하게 공간만 차지하게 할 수 있습니다. 
+      일단 텍스트는 지우고 비워둡니다.
+    -->
+    <div class="ad-container" id="adBanner"></div>
+
+    <!-- 설정 모달 -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal-content" style="height:auto; padding-bottom:30px;" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title" id="txtSettings">설정</span>
+                <button style="border:none; background:none; font-size:20px; color:var(--text-primary);" onclick="closeWithBack('settingsModal')">&times;</button>
+            </div>
+            <div class="settings-item">
+                <div style="display:flex; align-items:center;">
+                    <i class="fas fa-moon" style="margin-right:10px; color:var(--text-secondary);"></i>
+                    <span id="txtDarkMode">다크 모드</span>
+                </div>
+                <div class="lang-toggle">
+                    <button class="lang-btn" id="btnThemeLight" onclick="setTheme('light')"><i class="fas fa-sun"></i></button>
+                    <button class="lang-btn" id="btnThemeDark" onclick="setTheme('dark')"><i class="fas fa-moon"></i></button>
+                </div>
+            </div>
+            <div class="settings-item">
+                <div style="display:flex; align-items:center;">
+                    <i class="fas fa-globe" style="margin-right:10px; color:var(--text-secondary);"></i>
+                    <span id="txtLanguage">언어 (Language)</span>
+                </div>
+                <div class="lang-toggle">
+                    <button class="lang-btn" id="btnLangKo" onclick="setLanguage('ko')">한국어</button>
+                    <button class="lang-btn" id="btnLangEn" onclick="setLanguage('en')">English</button>
+                </div>
+            </div>
+            <div class="settings-item" onclick="openFullEditModal()">
+                <div style="display:flex; align-items:center;">
+                    <i class="fas fa-list-check" style="margin-right:10px; color:var(--text-secondary);"></i>
+                    <span id="txtEditList">통화 목록 편집</span>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size:12px; color:var(--text-secondary);"></i>
+            </div>
+            <div class="settings-item" onclick="openQuickEditModal()">
+                <div style="display:flex; align-items:center;">
+                    <i class="fas fa-pen-to-square" style="margin-right:10px; color:var(--text-secondary);"></i>
+                    <span id="txtEditQuick">빠른 금액 편집</span>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size:12px; color:var(--text-secondary);"></i>
+            </div>
+            <div class="settings-item" onclick="showToast('광고 제거 기능을 준비 중입니다.')">
+                <div style="display:flex; align-items:center;">
+                    <i class="fas fa-ban" style="margin-right:10px; color:var(--text-secondary);"></i>
+                    <span>광고 제거</span>
+                </div>
+                <i class="fas fa-chevron-right" style="font-size:12px; color:var(--text-secondary);"></i>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 전체 편집 모달 -->
+    <div class="modal-overlay" id="fullEditModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title" id="txtAddRemove">목록 편집</span>
+                <button style="border:none; background:none; font-size:16px; color:var(--primary-color);" onclick="closeWithBack('fullEditModal')">완료</button>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="fullEditSearch" class="search-input" placeholder="검색...">
+            </div>
+            <div class="modal-list" id="fullEditList"></div>
+        </div>
+    </div>
+
+    <!-- 빠른 금액 편집 모달 -->
+    <div class="modal-overlay" id="quickEditModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title" id="txtQuickEditTitle">빠른 금액 설정</span>
+                <button style="border:none; background:none; font-size:16px; color:var(--primary-color);" onclick="closeWithBack('quickEditModal')">완료</button>
+            </div>
+            <div style="padding:16px; font-size:13px; color:var(--text-secondary); border-bottom:1px solid var(--divider);" id="txtQuickDesc">--</div>
+            <div class="modal-list" id="quickEditList"></div>
+            <div style="padding:16px;">
+                <button onclick="addQuickPreset()" style="width:100%; padding:12px; background:var(--primary-color); color:#fff; border:none; border-radius:8px; font-weight:bold;">+ 추가</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 기록 모달 -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <span class="modal-title" id="txtHistoryTitle">계산 기록</span>
+                <div>
+                    <button class="icon-btn" onclick="shareAllHistory()" style="margin-right:10px; color:var(--share-color);"><i class="fas fa-share-nodes"></i></button>
+                    <button style="border:none; background:none; font-size:20px; color:var(--text-primary);" onclick="closeWithBack('historyModal')">&times;</button>
+                </div>
+            </div>
+            <div class="modal-list" id="historyList"></div>
+        </div>
+    </div>
+
+    <div id="toast">Message</div>
+
+    <script>
+        // ★★★ API 키 입력 ★★★
+        const API_KEY = 'YOUR_API_KEY'; 
+        const API_URL = `https://raw.githubusercontent.com/kjw695/woney-calc-server/refs/heads/main/rates.json`;
+
+        const i18n = {
+            ko: {
+                title: '워니계산기', settings: '설정', language: '언어', editList: '통화 목록 편집',
+                darkMode: '다크 모드', editQuick: '빠른 금액 편집', quickDesc: '현재 선택된 통화의 빠른 금액을 수정합니다.',
+                addRemove: '목록 편집', search: '검색 (국가명, 코드)', historyTitle: '계산 기록',
+                update: '업데이트 완료', saved: '저장되었습니다.', unitMan: '만', unitEok: '억', done: '완료',
+                atLeastOne: '최소 1개의 통화는 선택해야 합니다.', emptyHistory: '기록이 없습니다.', standard: '기준',
+                shareTitle: '워니계산기 기록', shareAll: '전체 기록 공유'
+            },
+            en: {
+                title: 'Woney Calculator', settings: 'Settings', language: 'Language', editList: 'Edit Currency List',
+                darkMode: 'Dark Mode', editQuick: 'Edit Quick Amounts', quickDesc: 'Edit quick amount buttons for the current currency.',
+                addRemove: 'Edit List', search: 'Search (Country, Code)', historyTitle: 'History',
+                update: 'Updated', saved: 'Saved.', unitMan: '0k', unitEok: '00M', done: 'Done',
+                atLeastOne: 'At least one currency must be selected.', emptyHistory: 'No history.', standard: 'Standard',
+                shareTitle: 'Woney History', shareAll: 'Share All History'
+            }
+        };
+
+        const allCurrencies = {
+            'KRW': { nameKo: '대한민국', nameEn: 'South Korea', flag: 'kr', symbol: '￦', unitKo: '원', unitEn: 'Won', decimals: 0, displayUnit: 1000, defaultPresets: [1000, 5000, 10000, 50000, 100000] },
+            'USD': { nameKo: '미국', nameEn: 'United States', flag: 'us', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [1, 5, 10, 20, 50, 100] },
+            'EUR': { nameKo: '유로존', nameEn: 'Eurozone', flag: 'eu', symbol: '€', unitKo: '유로', unitEn: 'Euro', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 20, 50, 100] },
+            'JPY': { nameKo: '일본', nameEn: 'Japan', flag: 'jp', symbol: '¥', unitKo: '엔', unitEn: 'Yen', decimals: 0, displayUnit: 100, defaultPresets: [100, 500, 1000, 5000, 10000] },
+            'CNY': { nameKo: '중국', nameEn: 'China', flag: 'cn', symbol: '¥', unitKo: '위안', unitEn: 'Yuan', decimals: 2, displayUnit: 10, defaultPresets: [10, 50, 100, 200, 500] },
+            'GBP': { nameKo: '영국', nameEn: 'United Kingdom', flag: 'gb', symbol: '£', unitKo: '파운드', unitEn: 'Pound', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 20, 50, 100] },
+            'VND': { nameKo: '베트남', nameEn: 'Vietnam', flag: 'vn', symbol: '₫', unitKo: '동', unitEn: 'Dong', decimals: 0, displayUnit: 100, defaultPresets: [10000, 50000, 100000, 200000, 500000] },
+            'THB': { nameKo: '태국', nameEn: 'Thailand', flag: 'th', symbol: '฿', unitKo: '바트', unitEn: 'Baht', decimals: 2, displayUnit: 1, defaultPresets: [20, 50, 100, 500, 1000] },
+            'PHP': { nameKo: '필리핀', nameEn: 'Philippines', flag: 'ph', symbol: '₱', unitKo: '페소', unitEn: 'Peso', decimals: 2, displayUnit: 1, defaultPresets: [20, 50, 100, 500, 1000] },
+            'TWD': { nameKo: '대만', nameEn: 'Taiwan', flag: 'tw', symbol: 'NT$', unitKo: '달러', unitEn: 'Dollar', decimals: 0, displayUnit: 1, defaultPresets: [100, 500, 1000, 2000] },
+            'HKD': { nameKo: '홍콩', nameEn: 'Hong Kong', flag: 'hk', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [10, 20, 50, 100, 500, 1000] },
+            'SGD': { nameKo: '싱가포르', nameEn: 'Singapore', flag: 'sg', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [2, 5, 10, 50, 100] },
+            'AUD': { nameKo: '호주', nameEn: 'Australia', flag: 'au', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 50, 100] },
+            'CAD': { nameKo: '캐나다', nameEn: 'Canada', flag: 'ca', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 50, 100] },
+            'CHF': { nameKo: '스위스', nameEn: 'Switzerland', flag: 'ch', symbol: 'CHF', unitKo: '프랑', unitEn: 'Franc', decimals: 2, displayUnit: 1, defaultPresets: [10, 20, 50, 100] },
+            'AED': { nameKo: 'UAE', nameEn: 'UAE', flag: 'ae', symbol: 'د.إ', unitKo: '디르함', unitEn: 'Dirham', decimals: 2, displayUnit: 1, defaultPresets: [10, 20, 50, 100, 500] },
+            'INR': { nameKo: '인도', nameEn: 'India', flag: 'in', symbol: '₹', unitKo: '루피', unitEn: 'Rupee', decimals: 2, displayUnit: 1, defaultPresets: [100, 500, 2000] },
+            'RUB': { nameKo: '러시아', nameEn: 'Russia', flag: 'ru', symbol: '₽', unitKo: '루블', unitEn: 'Ruble', decimals: 2, displayUnit: 100, defaultPresets: [100, 500, 1000, 5000] },
+            'TRY': { nameKo: '튀르키예', nameEn: 'Turkey', flag: 'tr', symbol: '₺', unitKo: '리라', unitEn: 'Lira', decimals: 2, displayUnit: 1, defaultPresets: [10, 50, 100] },
+            'IDR': { nameKo: '인도네시아', nameEn: 'Indonesia', flag: 'id', symbol: 'Rp', unitKo: '루피아', unitEn: 'Rupiah', decimals: 2, displayUnit: 100, defaultPresets: [10000, 50000, 100000] },
+            'MYR': { nameKo: '말레이시아', nameEn: 'Malaysia', flag: 'my', symbol: 'RM', unitKo: '링깃', unitEn: 'Ringgit', decimals: 2, displayUnit: 1, defaultPresets: [1, 5, 10, 20, 50] },
+            'MOP': { nameKo: '마카오', nameEn: 'Macau', flag: 'mo', symbol: 'MOP$', unitKo: '파타카', unitEn: 'Pataca', decimals: 2, displayUnit: 1, defaultPresets: [10, 20, 50, 100] },
+            'LAK': { nameKo: '라오스', nameEn: 'Laos', flag: 'la', symbol: '₭', unitKo: '킵', unitEn: 'Kip', decimals: 0, displayUnit: 1000, defaultPresets: [5000, 10000, 20000, 50000] },
+            'MNT': { nameKo: '몽골', nameEn: 'Mongolia', flag: 'mn', symbol: '₮', unitKo: '투그릭', unitEn: 'Tugrik', decimals: 0, displayUnit: 100, defaultPresets: [1000, 5000, 10000] },
+            'KZT': { nameKo: '카자흐스탄', nameEn: 'Kazakhstan', flag: 'kz', symbol: '₸', unitKo: '텡게', unitEn: 'Tenge', decimals: 2, displayUnit: 100, defaultPresets: [100, 500, 1000, 5000] },
+            'BND': { nameKo: '브루나이', nameEn: 'Brunei', flag: 'bn', symbol: 'B$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [1, 5, 10, 50] },
+            'KHR': { nameKo: '캄보디아', nameEn: 'Cambodia', flag: 'kh', symbol: '៛', unitKo: '리엘', unitEn: 'Riel', decimals: 0, displayUnit: 1000, defaultPresets: [1000, 5000, 10000] },
+            'ARS': { nameKo: '아르헨티나', nameEn: 'Argentina', flag: 'ar', symbol: '$', unitKo: '페소', unitEn: 'Peso', decimals: 2, displayUnit: 10, defaultPresets: [100, 500, 1000] },
+            'CLP': { nameKo: '칠레', nameEn: 'Chile', flag: 'cl', symbol: '$', unitKo: '페소', unitEn: 'Peso', decimals: 0, displayUnit: 100, defaultPresets: [1000, 5000, 10000] },
+            'COP': { nameKo: '콜롬비아', nameEn: 'Colombia', flag: 'co', symbol: '$', unitKo: '페소', unitEn: 'Peso', decimals: 0, displayUnit: 100, defaultPresets: [2000, 5000, 10000] },
+            'PEN': { nameKo: '페루', nameEn: 'Peru', flag: 'pe', symbol: 'S/', unitKo: '솔', unitEn: 'Sol', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 20, 50] },
+            'CZK': { nameKo: '체코', nameEn: 'Czechia', flag: 'cz', symbol: 'Kč', unitKo: '코루나', unitEn: 'Koruna', decimals: 2, displayUnit: 1, defaultPresets: [100, 200, 500, 1000] },
+            'HUF': { nameKo: '헝가리', nameEn: 'Hungary', flag: 'hu', symbol: 'Ft', unitKo: '포린트', unitEn: 'Forint', decimals: 0, displayUnit: 100, defaultPresets: [500, 1000, 2000, 5000] },
+            'PLN': { nameKo: '폴란드', nameEn: 'Poland', flag: 'pl', symbol: 'zł', unitKo: '즈워티', unitEn: 'Zloty', decimals: 2, displayUnit: 1, defaultPresets: [10, 20, 50, 100] },
+            'SEK': { nameKo: '스웨덴', nameEn: 'Sweden', flag: 'se', symbol: 'kr', unitKo: '크로나', unitEn: 'Krona', decimals: 2, displayUnit: 20, defaultPresets: [20, 50, 100, 500] },
+            'NOK': { nameKo: '노르웨이', nameEn: 'Norway', flag: 'no', symbol: 'kr', unitKo: '크로네', unitEn: 'Krone', decimals: 2, displayUnit: 50, defaultPresets: [50, 100, 200, 500] },
+            'DKK': { nameKo: '덴마크', nameEn: 'Denmark', flag: 'dk', symbol: 'kr', unitKo: '크로네', unitEn: 'Krone', decimals: 2, displayUnit: 50, defaultPresets: [50, 100, 200, 500] },
+            'ISK': { nameKo: '아이슬란드', nameEn: 'Iceland', flag: 'is', symbol: 'kr', unitKo: '크로나', unitEn: 'Krona', decimals: 0, displayUnit: 10, defaultPresets: [1000, 5000, 10000] },
+            'NZD': { nameKo: '뉴질랜드', nameEn: 'New Zealand', flag: 'nz', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 20, 50] },
+            'SAR': { nameKo: '사우디', nameEn: 'Saudi Arabia', flag: 'sa', symbol: '﷼', unitKo: '리얄', unitEn: 'Riyal', decimals: 2, displayUnit: 1, defaultPresets: [10, 50, 100, 500] },
+            'QAR': { nameKo: '카타르', nameEn: 'Qatar', flag: 'qa', symbol: '﷼', unitKo: '리얄', unitEn: 'Riyal', decimals: 2, displayUnit: 1, defaultPresets: [10, 50, 100, 500] },
+            'EGP': { nameKo: '이집트', nameEn: 'Egypt', flag: 'eg', symbol: '£', unitKo: '파운드', unitEn: 'Pound', decimals: 2, displayUnit: 5, defaultPresets: [50, 100, 200, 500] },
+            'ZAR': { nameKo: '남아공', nameEn: 'South Africa', flag: 'za', symbol: 'R', unitKo: '랜드', unitEn: 'Rand', decimals: 2, displayUnit: 5, defaultPresets: [20, 50, 100, 200] },
+        };
+
+        const state = {
+            theme: 'light',
+            lang: 'ko',
+            codes: ['KRW', 'USD', 'JPY', 'EUR', 'CNY', 'VND'], 
+            favorites: ['KRW', 'USD', 'JPY'], 
+            activeCode: 'KRW',
+            amounts: {},
+            rates: {},
+            history: [],
+            customPresets: {}
+        };
+
+        function loadState() {
+            if(localStorage.getItem('calc_theme')) state.theme = localStorage.getItem('calc_theme');
+            if(localStorage.getItem('calc_lang')) state.lang = localStorage.getItem('calc_lang');
+            if(localStorage.getItem('calc_codes')) state.codes = JSON.parse(localStorage.getItem('calc_codes'));
+            if(localStorage.getItem('calc_favs')) state.favorites = JSON.parse(localStorage.getItem('calc_favs'));
+            if(localStorage.getItem('calc_history')) state.history = JSON.parse(localStorage.getItem('calc_history'));
+            if(localStorage.getItem('calc_presets')) state.customPresets = JSON.parse(localStorage.getItem('calc_presets'));
+            if(localStorage.getItem('calc_active')) state.activeCode = localStorage.getItem('calc_active');
+            
+            setTheme(state.theme);
+            const savedAmount = localStorage.getItem('calc_amount');
+            state.amounts[state.activeCode] = savedAmount || '10000';
+            updateLangUI();
+            
+            const lastUpdate = parseInt(localStorage.getItem('calc_last_ts') || '0');
+            if(lastUpdate > 0) updateTimeText(lastUpdate);
+            else document.getElementById('lastUpdatedText').innerText = '--';
+        }
+
+        function saveState() {
+            localStorage.setItem('calc_theme', state.theme);
+            localStorage.setItem('calc_lang', state.lang);
+            localStorage.setItem('calc_codes', JSON.stringify(state.codes));
+            localStorage.setItem('calc_favs', JSON.stringify(state.favorites));
+            localStorage.setItem('calc_history', JSON.stringify(state.history));
+            localStorage.setItem('calc_presets', JSON.stringify(state.customPresets));
+            localStorage.setItem('calc_active', state.activeCode);
+            localStorage.setItem('calc_amount', state.amounts[state.activeCode]);
+        }
+
+        async function fetchRates() {
+            const now = Date.now();
+            const lastUpdate = parseInt(localStorage.getItem('calc_last_ts') || '0');
+            const savedRates = localStorage.getItem('calc_rates');
+            
+            // 8시간 캐싱 유지
+            if (savedRates && (now - lastUpdate < 8 * 60 * 60 * 1000)) {
+                state.rates = JSON.parse(savedRates);
+                return;
+            }
+
+            // [수정] 오프라인 우선 대응 로직
+            // 1. 네트워크 시도 -> 2. 로컬 assets 시도 -> 3. 하드코딩 Mock
+            try {
+                // 1. 네트워크 요청
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error("Network Error");
+                const data = await res.json();
+                updateRatesData(data, now);
+                showToast(i18n[state.lang].update);
+            } catch (networkError) {
+                console.log("Network failed, trying local assets...");
+                try {
+                    // 2. 앱 내장 Assets 요청 (오프라인 대응)
+                    // Capacitor 등 하이브리드 앱에서는 상대경로로 assets 접근 가능
+                    const localRes = await fetch('assets/rates.json');
+                    if (!localRes.ok) throw new Error("Local Asset Missing");
+                    const localData = await localRes.json();
+                    
+                    // 로컬 데이터는 저장하되 시간은 갱신하지 않음(오래된 데이터일 수 있으므로)
+                    state.rates = localData.rates;
+                    // 만약 localStorage가 비어있다면 저장
+                    if(!savedRates) {
+                        localStorage.setItem('calc_rates', JSON.stringify(state.rates));
+                        localStorage.setItem('calc_last_ts', localData.last_update || now);
+                    }
+                    updateTimeText(parseInt(localStorage.getItem('calc_last_ts') || now));
+                    
+                } catch (assetError) {
+                    console.log("Assets failed, using mock data.");
+                    // 3. 최후의 수단: 하드코딩 Mock
+                    if(savedRates) { 
+                        state.rates = JSON.parse(savedRates); 
+                        updateTimeText(lastUpdate);
+                    } else { 
+                        generateMockRates(); 
+                    }
+                }
+            }
+        }
+
+        function updateRatesData(data, now) {
+            state.rates = data.rates;
+            localStorage.setItem('calc_rates', JSON.stringify(state.rates));
+            const serverTime = data.last_update || now;
+            localStorage.setItem('calc_last_ts', serverTime);
+            updateTimeText(serverTime);
+        }
+
+        function generateMockRates() {
+            const r = { 'KRW': 1 };
+            const map = {'USD':1380, 'JPY':9.1, 'EUR':1480, 'CNY':190, 'VND':0.055};
+            Object.keys(allCurrencies).forEach(c => { if(c!=='KRW') r[c] = 1/(map[c]||1000); });
+            state.rates = r;
+            const now = Date.now();
+            localStorage.setItem('calc_last_ts', now);
+            updateTimeText(now);
+        }
+
+        function forceUpdateRates() { localStorage.removeItem('calc_last_ts'); fetchRates().then(calculate); }
+
+        function updateTimeText(ts) {
+            const d = new Date(ts);
+            const t = i18n[state.lang];
+            document.getElementById('lastUpdatedText').innerText = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2,'0')} ${t.standard}`;
+        }
+
+        function calculate() {
+            const active = state.activeCode;
+            const amount = parseFloat(state.amounts[active]) || 0;
+            const activeRate = state.rates[active];
+            if(!activeRate) return;
+            const baseKRW = amount / activeRate;
+
+            state.codes.forEach(code => {
+                if(code === active) return;
+                const rate = state.rates[code];
+                let val = baseKRW * rate;
+                let str = val.toFixed(8).replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+                if(str === '0.00000000') str = '0';
+                state.amounts[code] = str;
+            });
+            saveState();
+            renderList();
+        }
+
+        function formatMoney(str, code) {
+            let num = parseFloat(str) || 0;
+            const info = allCurrencies[code];
+            if(str.includes('.') && str.split('.')[1] === '') return parseInt(str.split('.')[0]).toLocaleString() + '.';
+            return num.toLocaleString(undefined, { minimumFractionDigits: info.decimals, maximumFractionDigits: info.decimals });
+        }
+
+        function formatRateValue(valStr, code) {
+            let num = parseFloat(valStr) || 0;
+            return num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function formatKoreanShort(amount) {
+            if (amount < 10000) return amount.toLocaleString();
+            const unitMan = 10000;
+            const unitEok = 100000000;
+            if (amount >= unitEok) {
+                const eokPart = Math.floor(amount / unitEok);
+                const manPart = Math.floor((amount % unitEok) / unitMan);
+                return `${eokPart}억${manPart > 0 ? ' '+manPart+'만' : ''}`;
+            } else {
+                const man = amount / unitMan;
+                const formatted = Number.isInteger(man) ? man : man.toFixed(1);
+                return `${formatted}만`;
+            }
+        }
+
+        function formatExchangeRate(code) {
+            const info = allCurrencies[code];
+            const activeInfo = allCurrencies[state.activeCode];
+            if (!state.rates[state.activeCode] || !state.rates[code]) return '';
+            
+            const unitNameTarget = state.lang === 'ko' ? info.unitKo : info.unitEn;
+            const unitNameActive = state.lang === 'ko' ? activeInfo.unitKo : activeInfo.unitEn;
+
+            const rateActiveToTarget = state.rates[code] / state.rates[state.activeCode];
+            
+            if (state.activeCode === 'KRW') {
+                const targetUnit = info.displayUnit || 1;
+                const valInKrw = targetUnit * (1 / rateActiveToTarget);
+                return `${targetUnit.toLocaleString()} ${unitNameTarget} = ${formatRateValue(valInKrw.toString(), 'KRW')} ${unitNameActive}`;
+            } else if (code === 'KRW') {
+                const activeUnit = activeInfo.displayUnit || 1;
+                const valInKrw = activeUnit * rateActiveToTarget;
+                return `${activeUnit.toLocaleString()} ${unitNameActive} = ${formatRateValue(valInKrw.toString(), 'KRW')} ${unitNameTarget}`;
+            } else {
+                if (rateActiveToTarget < 1) { 
+                    const targetUnit = info.displayUnit || 1;
+                    const valInActive = targetUnit * (1 / rateActiveToTarget);
+                    return `${targetUnit.toLocaleString()} ${unitNameTarget} = ${formatRateValue(valInActive.toString(), state.activeCode)} ${unitNameActive}`;
+                } else {
+                    const activeUnit = activeInfo.displayUnit || 1;
+                    const valInTarget = activeUnit * rateActiveToTarget;
+                    return `${activeUnit.toLocaleString()} ${unitNameActive} = ${formatRateValue(valInTarget.toString(), code)} ${unitNameTarget}`;
+                }
+            }
+        }
+
+        function formatMainUnit(code, amountStr) {
+            const info = allCurrencies[code];
+            const num = parseFloat(amountStr) || 0;
+            if(state.lang === 'ko') {
+                if(code === 'KRW') return `${info.symbol} ${formatKoreanShort(num)} 원`;
+                return `${info.symbol} ${formatMoney(amountStr, code)} ${info.unitKo}`;
+            } else {
+                return `${formatMoney(amountStr, code)} ${info.unitEn}`;
+            }
+        }
+
+        function renderList() {
+            const container = document.getElementById('currencyListContainer');
+            container.innerHTML = '';
+            
+            if(state.codes.length === 0) { state.codes.push('KRW'); saveState(); }
+
+            state.codes.forEach((code, index) => {
+                const info = allCurrencies[code];
+                const isSelected = code === state.activeCode;
+                const amountStr = state.amounts[code] || '0';
+                const name = state.lang === 'ko' ? info.nameKo : info.nameEn;
+
+                const li = document.createElement('div');
+                li.className = `list-item ${isSelected?'selected':''}`;
+                li.setAttribute('data-code', code); 
+
+                const isPinned = (index === 0);
+                const pinClass = isPinned ? 'pin-btn active' : 'pin-btn';
+
+                li.innerHTML = `
+                    <div class="item-left">
+                        <div class="${pinClass}" onclick="togglePin('${code}')"><i class="fas fa-thumbtack"></i></div>
+                        <div class="flag-wrapper" onclick="openFullEditModal(); event.stopPropagation();">
+                            <div class="flag-icon"><span class="fi fi-${info.flag}"></span></div>
+                        </div>
+                        <div class="country-info">
+                            <span class="country-name">${name}</span>
+                            <span class="currency-code">${code}</span>
+                        </div>
+                    </div>
+                    <div class="item-center">
+                        ${formatExchangeRate(code)}
+                    </div>
+                    <div class="item-right" onclick="setActive('${code}')">
+                        <span class="amount-text">${formatMoney(amountStr, code)}</span>
+                        <span class="unit-text">${formatMainUnit(code, amountStr)}</span>
+                    </div>
+                `;
+                container.appendChild(li);
+            });
+
+            renderQuickButtons();
+        }
+
+        function togglePin(code) {
+            const idx = state.codes.indexOf(code);
+            if(idx > 0) { 
+                state.codes.splice(idx, 1); 
+                state.codes.unshift(code); 
+                saveState();
+                renderList();
+            }
+        }
+
+        function renderQuickButtons() {
+            const quickBox = document.getElementById('quickButtons');
+            quickBox.innerHTML = '';
+            const activeCode = state.activeCode;
+            const presets = state.customPresets[activeCode] || allCurrencies[activeCode].defaultPresets;
+
+            presets.forEach(v => {
+                const btn = document.createElement('div');
+                btn.className = 'quick-chip';
+                btn.innerText = v.toLocaleString();
+                btn.onclick = () => addAmount(v);
+                quickBox.appendChild(btn);
+            });
+
+            const editBtn = document.createElement('div');
+            editBtn.className = 'quick-chip edit-chip';
+            editBtn.innerHTML = '<i class="fas fa-pen"></i>';
+            editBtn.onclick = openQuickEditModal;
+            quickBox.appendChild(editBtn);
+        }
+
+        function setActive(code) { state.activeCode = code; calculate(); }
+
+        function addAmount(val) {
+            const current = parseFloat(state.amounts[state.activeCode]) || 0;
+            state.amounts[state.activeCode] = (current + val).toString();
+            calculate();
+        }
+
+        document.querySelectorAll('.keypad-btn').forEach(btn => {
+            if(btn.id === 'deleteButton') return;
+            btn.onclick = () => {
+                const val = btn.dataset.value;
+                let cur = state.amounts[state.activeCode] || '0';
+                if(val === '.') { if(!cur.includes('.')) cur += '.'; }
+                else {
+                    if(cur === '0') cur = val;
+                    else if(cur.replace('.','').length < 14) cur += val;
+                }
+                state.amounts[state.activeCode] = cur;
+                calculate();
+                if(navigator.vibrate) navigator.vibrate(10);
+            };
+        });
+
+        let delInterval;
+        const btnDel = document.getElementById('deleteButton');
+        const doDel = () => {
+            let cur = state.amounts[state.activeCode] || '0';
+            cur = cur.slice(0, -1);
+            if(cur===''||cur==='-') cur='0';
+            state.amounts[state.activeCode] = cur;
+            calculate();
+            if(navigator.vibrate) navigator.vibrate(10);
+        };
+        btnDel.addEventListener('touchstart', (e) => { e.preventDefault(); doDel(); delInterval = setInterval(doDel, 100); });
+        btnDel.addEventListener('touchend', () => clearInterval(delInterval));
+        btnDel.addEventListener('mousedown', () => { doDel(); delInterval = setInterval(doDel, 100); });
+        btnDel.addEventListener('mouseup', () => clearInterval(delInterval));
+
+        function openModal(id) {
+            document.getElementById(id).classList.add('active');
+            history.pushState({modalId: id}, null, '');
+        }
+        function closeWithBack(id) {
+            if(document.getElementById(id).classList.contains('active')) history.back();
+        }
+        window.onpopstate = function() {
+            document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
+        };
+
+        function openSettingsModal() { openModal('settingsModal'); }
+        function openFullEditModal() { 
+            document.getElementById('settingsModal').classList.remove('active');
+            renderFullEditList(); openModal('fullEditModal'); 
+        }
+
+        function renderFullEditList() {
+            const list = document.getElementById('fullEditList');
+            list.innerHTML = '';
+            const search = document.getElementById('fullEditSearch').value.toLowerCase();
+            const allCodes = Object.keys(allCurrencies).filter(c => {
+                const n = state.lang==='ko'?allCurrencies[c].nameKo:allCurrencies[c].nameEn;
+                return c.toLowerCase().includes(search) || n.toLowerCase().includes(search);
+            });
+            
+            allCodes.sort((a, b) => {
+                const aFav = state.favorites.includes(a), bFav = state.favorites.includes(b);
+                if(aFav && !bFav) return -1; if(!aFav && bFav) return 1;
+                
+                const aSel = state.codes.includes(a), bSel = state.codes.includes(b);
+                if(aSel && !bSel) return -1; if(!aSel && bSel) return 1;
+                
+                return a.localeCompare(b);
+            });
+
+            allCodes.forEach(code => {
+                const info = allCurrencies[code];
+                const name = state.lang==='ko'?info.nameKo:info.nameEn;
+                const isSelected = state.codes.includes(code);
+                const isFav = state.favorites.includes(code);
+
+                const div = document.createElement('div');
+                div.className = 'currency-option';
+                div.onclick = (e) => {
+                    if(e.target.closest('.favorite-toggle-btn')) return;
+                    
+                    const idx = state.codes.indexOf(code);
+                    if(idx > -1) {
+                        if(state.codes.length <= 1) return showToast(i18n[state.lang].atLeastOne);
+                        state.codes.splice(idx, 1);
+                    } else {
+                        state.codes.push(code);
+                    }
+                    saveState();
+                    
+                    const icon = div.querySelector('.selection-check-icon');
+                    const newSelected = state.codes.includes(code);
+                    icon.className = `selection-check-icon ${newSelected?'checked':''}`;
+                    icon.innerHTML = newSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>';
+                    
+                    renderList();
+                };
+
+                div.innerHTML = `
+                    <div class="currency-details">
+                        <div class="flag-icon" style="margin-right:12px;"><span class="fi fi-${info.flag}"></span></div>
+                        <div>
+                            <div style="font-weight:bold; font-size:14px;">${name}</div>
+                            <div style="font-size:11px; color:var(--text-secondary);">${code}</div>
+                        </div>
+                    </div>
+                    <div class="action-controls">
+                        <button class="favorite-toggle-btn ${isFav?'is-favorite':''}" onclick="toggleFavorite('${code}', this); event.stopPropagation();">
+                            <i class="${isFav?'fas':'far'} fa-star"></i>
+                        </button>
+                        <div class="selection-check-icon ${isSelected?'checked':''}">
+                            ${isSelected ? '<i class="fas fa-check-circle"></i>' : '<i class="far fa-circle"></i>'}
+                        </div>
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+        }
+        document.getElementById('fullEditSearch').addEventListener('input', renderFullEditList);
+
+        function toggleFavorite(code, btnElement) {
+            const idx = state.favorites.indexOf(code);
+            if(idx > -1) state.favorites.splice(idx, 1);
+            else state.favorites.push(code);
+            saveState();
+            
+            const isFav = state.favorites.includes(code);
+            btnElement.className = `favorite-toggle-btn ${isFav?'is-favorite':''}`;
+            btnElement.innerHTML = `<i class="${isFav?'fas':'far'} fa-star"></i>`;
+        }
+
+        function openQuickEditModal() {
+            document.getElementById('settingsModal').classList.remove('active');
+            renderQuickEditList();
+            openModal('quickEditModal');
+        }
+
+        function formatInputNumber(input) {
+            let val = input.value.replace(/[^0-9]/g, '');
+            if(val) {
+                input.value = parseInt(val).toLocaleString();
+            } else {
+                input.value = '';
+            }
+        }
+
+        function renderQuickEditList() {
+            const list = document.getElementById('quickEditList');
+            list.innerHTML = '';
+            const activeCode = state.activeCode;
+            const presets = state.customPresets[activeCode] || allCurrencies[activeCode].defaultPresets;
+
+            const info = allCurrencies[activeCode];
+            const name = state.lang==='ko'?info.nameKo:info.nameEn;
+            document.getElementById('txtQuickDesc').innerText = `${name} (${activeCode}) ${i18n[state.lang].quickDesc}`;
+
+            presets.forEach((val, index) => {
+                const div = document.createElement('div');
+                div.className = 'quick-edit-item';
+                div.innerHTML = `
+                    <span style="font-weight:bold;">${index+1}.</span>
+                    <input type="text" inputmode="numeric" class="quick-edit-input" value="${val.toLocaleString()}" 
+                           oninput="formatInputNumber(this)" onchange="updateQuickPreset(${index}, this.value)">
+                    <button class="icon-btn" style="color:var(--delete-color);" onclick="removeQuickPreset(${index})"><i class="fas fa-trash"></i></button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function updateQuickPreset(index, valStr) {
+            const activeCode = state.activeCode;
+            let presets = state.customPresets[activeCode] || [...allCurrencies[activeCode].defaultPresets];
+            const num = parseFloat(valStr.replace(/,/g, ''));
+            if(!isNaN(num)) {
+                presets[index] = num;
+                state.customPresets[activeCode] = presets;
+                saveState();
+                renderList();
+            }
+        }
+
+        function addQuickPreset() {
+            const activeCode = state.activeCode;
+            let presets = state.customPresets[activeCode] || [...allCurrencies[activeCode].defaultPresets];
+            const lastVal = presets.length > 0 ? presets[presets.length-1] : 10;
+            presets.push(lastVal * 2);
+            state.customPresets[activeCode] = presets;
+            saveState();
+            renderQuickEditList();
+            renderList();
+        }
+
+        function removeQuickPreset(index) {
+            const activeCode = state.activeCode;
+            let presets = state.customPresets[activeCode] || [...allCurrencies[activeCode].defaultPresets];
+            presets.splice(index, 1);
+            state.customPresets[activeCode] = presets;
+            saveState();
+            renderQuickEditList();
+            renderList();
+        }
+
+        function updateLangUI() {
+            const t = i18n[state.lang];
+            document.getElementById('appTitle').innerText = t.title;
+            document.getElementById('txtSettings').innerText = t.settings;
+            document.getElementById('txtLanguage').innerText = t.language;
+            document.getElementById('txtEditList').innerText = t.editList;
+            document.getElementById('txtAddRemove').innerText = t.addRemove;
+            document.getElementById('txtHistoryTitle').innerText = t.historyTitle;
+            document.getElementById('txtDarkMode').innerText = t.darkMode;
+            document.getElementById('txtEditQuick').innerText = t.editQuick;
+            document.getElementById('txtQuickEditTitle').innerText = t.editQuick;
+            
+            document.getElementById('fullEditSearch').placeholder = t.search;
+            document.getElementById('btnLangKo').className = `lang-btn ${state.lang==='ko'?'active':''}`;
+            document.getElementById('btnLangEn').className = `lang-btn ${state.lang==='en'?'active':''}`;
+            document.getElementById('btnThemeLight').className = `lang-btn ${state.theme==='light'?'active':''}`;
+            document.getElementById('btnThemeDark').className = `lang-btn ${state.theme==='dark'?'active':''}`;
+            
+            document.title = t.title; 
+            renderList();
+        }
+
+        function setLanguage(l) { state.lang = l; saveState(); updateLangUI(); }
+        function setTheme(theme) {
+            state.theme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            saveState();
+            updateLangUI();
+        }
+
+        function toggleHistoryModal(show) {
+            if(show) {
+                renderHistoryList();
+                openModal('historyModal');
+            } else { closeWithBack('historyModal'); }
+        }
+
+        function renderHistoryList() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            if(state.history.length === 0) {
+                list.innerHTML = `<div style="padding:40px; text-align:center; color:var(--text-secondary);">${i18n[state.lang].emptyHistory}</div>`;
+            } else {
+                state.history.slice().reverse().forEach((h, index) => {
+                    const originalIndex = state.history.length - 1 - index;
+                    const info = allCurrencies[h.code];
+                    const div = document.createElement('div');
+                    div.className = 'history-item';
+                    div.innerHTML = `
+                        <div>
+                            <div class="history-date">${h.date}</div>
+                            <div class="history-val">${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${h.code}</div>
+                        </div>
+                        <div class="history-btn-group">
+                            <button class="history-action-btn btn-share" onclick="shareHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-share-nodes"></i></button>
+                            <button class="history-action-btn btn-edit" onclick="editHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-pen"></i></button>
+                            <button class="history-action-btn btn-del" onclick="deleteHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-trash"></i></button>
+                        </div>
+                    `;
+                    div.onclick = (e) => {
+                        if(e.target.closest('.history-action-btn')) return;
+                        state.activeCode = h.code; state.amounts[h.code] = h.amount;
+                        calculate(); closeWithBack('historyModal');
+                    };
+                    list.appendChild(div);
+                });
+            }
+        }
+
+        function shareAllHistory() {
+            if (state.history.length === 0) return showToast(i18n[state.lang].emptyHistory);
+            
+            let text = `[${i18n[state.lang].shareTitle}]\n\n`;
+            state.history.slice().reverse().forEach(h => {
+                const info = allCurrencies[h.code];
+                text += `${h.date} : ${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}\n`;
+            });
+
+            if (navigator.share) {
+                navigator.share({ title: i18n[state.lang].shareTitle, text: text }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(text).then(() => showToast("전체 기록이 복사되었습니다."));
+            }
+        }
+
+        function shareHistory(originalIndex) {
+            const h = state.history[originalIndex];
+            const info = allCurrencies[h.code];
+            const text = `[${i18n[state.lang].shareTitle}] ${h.date}\n${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}`;
+            
+            if (navigator.share) {
+                navigator.share({ title: '기록 공유', text: text }).catch(console.error);
+            } else {
+                navigator.clipboard.writeText(text).then(() => showToast("기록이 복사되었습니다."));
+            }
+        }
+
+        function editHistory(index) {
+            const item = state.history[index];
+            const newAmt = prompt("수정할 금액을 입력하세요:", item.amount);
+            if(newAmt !== null && !isNaN(parseFloat(newAmt))) {
+                state.history[index].amount = newAmt;
+                saveState();
+                renderHistoryList();
+            }
+        }
+
+        function deleteHistory(index) {
+            if(confirm("삭제하시겠습니까?")) {
+                state.history.splice(index, 1);
+                saveState();
+                renderHistoryList();
+            }
+        }
+
+        function saveHistory() {
+            const amt = state.amounts[state.activeCode];
+            if(parseFloat(amt) === 0) return;
+            const now = new Date();
+            const timeString = `${now.getMonth()+1}/${now.getDate()} ${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            
+            state.history.push({ date: timeString, code: state.activeCode, amount: amt });
+            if(state.history.length > 30) state.history.shift();
+            saveState();
+            showToast(i18n[state.lang].saved);
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg; t.className = 'show';
+            setTimeout(() => t.className = '', 2000);
+        }
+
+        window.onload = async () => {
+            loadState();
+            await fetchRates();
+            calculate();
+
+            new Sortable(document.getElementById('currencyListContainer'), {
+                animation: 150, delay: 200, delayOnTouchOnly: true, ghostClass: 'sortable-ghost',
+                onEnd: function (evt) {
+                    const item = state.codes.splice(evt.oldIndex, 1)[0];
+                    state.codes.splice(evt.newIndex, 0, item);
+                    saveState();
+                    renderList();
+                },
+            });
+
+            // [수정] Capacitor 하드웨어 뒤로가기 버튼 처리 로직 추가
+            // Capacitor 환경에서만 동작 (브라우저에서는 에러 없이 무시됨)
+            if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+                const { App } = window.Capacitor.Plugins;
+                App.addListener('backButton', ({ canGoBack }) => {
+                    const activeModal = document.querySelector('.modal-overlay.active');
+                    if (activeModal) {
+                        // 모달이 열려있으면 모달만 닫음
+                        closeWithBack(activeModal.id);
+                    } else {
+                        // 메인 화면이면 앱 종료
+                        App.exitApp();
+                    }
+                });
+            }
+        };
+    </script>
+</body>
+</html>
