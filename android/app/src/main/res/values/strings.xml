@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">CurrencyCalculator</string>
-    <string name="title_activity_main">CurrencyCalculator</string>
-    <string name="package_name">com.yourcompany.currencycalculator</string>
-    <string name="custom_url_scheme">com.yourcompany.currencycalculator</string>
+    <string name="app_name">Woney Calculator</string>
+    <string name="title_activity_main">Woney Calculator</string>
+    <string name="package_name">com.woney.calc</string>
+    <string name="custom_url_scheme">com.woney.calc</string>
 </resources>

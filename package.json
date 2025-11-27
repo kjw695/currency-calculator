@@ -12,6 +12,10 @@
   "dependencies": {
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.0",
-    "@capacitor/core": "^7.4.4"
+    "@capacitor/core": "^7.4.4",
+    "@capacitor/status-bar": "^7.0.3",
+    "@fortawesome/fontawesome-free": "^7.1.0",
+    "flag-icons": "^7.5.0",
+    "sortablejs": "^1.15.6"
   }
 }

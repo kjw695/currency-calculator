@@ -1,5 +1,6 @@
 {
-  "appId": "com.yourcompany.currencycalculator",
-  "appName": "CurrencyCalculator",
-  "webDir": "www"
+  "appId": "com.woney.calculator",
+  "appName": "Woney Calculator",
+  "webDir": "www",
+  "bundledWebRuntime": false
 }

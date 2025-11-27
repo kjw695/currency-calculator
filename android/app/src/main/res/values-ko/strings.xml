@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">워니계산기</string>
+    <string name="title_activity_main">워니계산기</string>
+    <string name="package_name">com.woney.calc</string>
+    <string name="custom_url_scheme">com.woney.calc</string>
+</resources>
