@@ -1,0 +1,4 @@
+npx cap sync
+
+node scripts/copy_libs.js   오프라인 라이브러리 저장 명령어
+터미널에서 "모듈을 찾을 수 없다"고 하면 **npm install**을 먼저 한 번 하라고 해주시면 됩니다.

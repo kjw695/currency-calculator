@@ -3,7 +3,7 @@ name: Daily Rates Update
 on:
   schedule:
     # 한국 시간 매일 오전 6시 (UTC 21:00)
-    - cron: '0 21 * * *'
+    - cron: '0 * * * *'  # 매 정각마다 실행 (하루 24회 업데이트)
   workflow_dispatch:
 
 permissions:

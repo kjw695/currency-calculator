@@ -730,6 +730,20 @@
             'ZAR': { nameKo: '남아공', nameEn: 'South Africa', flag: 'za', symbol: 'R', unitKo: '랜드', unitEn: 'Rand', decimals: 2, displayUnit: 5, defaultPresets: [20, 50, 100, 200] },
             'BRL': { nameKo: '브라질', nameEn: 'Brazil', flag: 'br', symbol: 'R$', unitKo: '헤알', unitEn: 'Real', decimals: 2, displayUnit: 1, defaultPresets: [5, 10, 20, 50, 100] },
             'MXN': { nameKo: '멕시코', nameEn: 'Mexico', flag: 'mx', symbol: '$', unitKo: '페소', unitEn: 'Peso', decimals: 2, displayUnit: 1, defaultPresets: [20, 50, 100, 200, 500] },
+            // ▼▼▼ [글로벌 확장] 휴양지, 중동(3자리 소수점), 유럽/아프리카 추가 ▼▼▼
+            'MVR': { nameKo: '몰디브', nameEn: 'Maldives', flag: 'mv', symbol: 'Rf', unitKo: '루피야', unitEn: 'Rufiyaa', decimals: 2, displayUnit: 10, defaultPresets: [10, 50, 100, 500] },
+            'FJD': { nameKo: '피지', nameEn: 'Fiji', flag: 'fj', symbol: '$', unitKo: '달러', unitEn: 'Dollar', decimals: 2, displayUnit: 5, defaultPresets: [5, 10, 20, 50] },
+            
+            // 중동: 화폐 가치가 매우 높아 소수점 3자리(0.001)까지 표시
+            'KWD': { nameKo: '쿠웨이트', nameEn: 'Kuwait', flag: 'kw', symbol: 'د.ك', unitKo: '디나르', unitEn: 'Dinar', decimals: 3, displayUnit: 1, defaultPresets: [1, 5, 10, 20] },
+            'BHD': { nameKo: '바레인', nameEn: 'Bahrain', flag: 'bh', symbol: '.د.ب', unitKo: '디나르', unitEn: 'Dinar', decimals: 3, displayUnit: 1, defaultPresets: [1, 5, 10, 20] },
+            'OMR': { nameKo: '오만', nameEn: 'Oman', flag: 'om', symbol: 'ر.ع.', unitKo: '리알', unitEn: 'Rial', decimals: 3, displayUnit: 1, defaultPresets: [1, 5, 10, 20] },
+            'JOD': { nameKo: '요르단', nameEn: 'Jordan', flag: 'jo', symbol: 'د.ا', unitKo: '디나르', unitEn: 'Dinar', decimals: 3, displayUnit: 1, defaultPresets: [1, 5, 10, 20] },
+            'ILS': { nameKo: '이스라엘', nameEn: 'Israel', flag: 'il', symbol: '₪', unitKo: '셰켈', unitEn: 'Shekel', decimals: 2, displayUnit: 10, defaultPresets: [10, 50, 100, 200] },
+            
+            'RON': { nameKo: '루마니아', nameEn: 'Romania', flag: 'ro', symbol: 'lei', unitKo: '레우', unitEn: 'Leu', decimals: 2, displayUnit: 10, defaultPresets: [10, 50, 100, 200] },
+            'BGN': { nameKo: '불가리아', nameEn: 'Bulgaria', flag: 'bg', symbol: 'лв', unitKo: '레프', unitEn: 'Lev', decimals: 2, displayUnit: 5, defaultPresets: [5, 10, 20, 50] },
+            'MAD': { nameKo: '모로코', nameEn: 'Morocco', flag: 'ma', symbol: 'د.م.', unitKo: '디르함', unitEn: 'Dirham', decimals: 2, displayUnit: 10, defaultPresets: [10, 50, 100, 200] },
             
         };
 
@@ -815,7 +829,7 @@
                     }
                     updateTimeText(parseInt(localStorage.getItem('calc_last_ts') || now));
                     calculate();
-                    showToast("오프라인 모드 (파일)");
+                    showToast("오프라인 모드");
                 } catch (assetError) {
                     console.log("Assets failed, using mock data.");
                     if(savedRates) { 
@@ -825,7 +839,7 @@
                         generateMockRates(); 
                     }
                     calculate();
-                    showToast("오프라인 모드 (임시)");
+                    showToast("오프라인 모드");
                 }
             }
         }
@@ -895,8 +909,19 @@
                          str = Math.round(val).toString();
                     }
                 }
+                
                 state.amounts[code] = str;
+              // [성능 최적화] 전체 리스트를 다시 그리지 않고(renderList X), 해당 요소만 찾아 숫자 업데이트
+                // 이렇게 하면 입력 반응 속도가 훨씬 빨라집니다.
+                const item = document.querySelector(`.list-item[data-code="${code}"]`);
+                if (item) {
+                    const amountEl = item.querySelector('.amount-text');
+                    // const rateEl = item.querySelector('.rate-info-text'); // 환율 정보는 변동 없으므로 굳이 업데이트 안 해도 됨
+                    if(amountEl) amountEl.innerText = formatMoney(str, code);
+                }
             });
+  
+        
 
             saveState();
             renderList();
@@ -1663,11 +1688,21 @@
             await fetchRates();
             calculate();
 
-            new Sortable(document.getElementById('currencyListContainer'), {
-                animation: 150, delay: 200, delayOnTouchOnly: true, ghostClass: 'sortable-ghost',
+             new Sortable(document.getElementById('currencyListContainer'), {
+                animation: 150, 
+                delay: 200, 
+                delayOnTouchOnly: true, 
+                ghostClass: 'sortable-ghost',
+                draggable: ".list-item", 
                 onEnd: function (evt) {
-                    const item = state.codes.splice(evt.oldIndex, 1)[0];
-                    state.codes.splice(evt.newIndex, 0, item);
+                    // [Fix] Refresh indicator takes up index 0, so subtract 1 for actual data index
+                    const oldIdx = evt.oldIndex - 1;
+                    const newIdx = evt.newIndex - 1;
+
+                    if (oldIdx < 0 || newIdx < 0) return;
+
+                    const item = state.codes.splice(oldIdx, 1)[0];
+                    state.codes.splice(newIdx, 0, item);
                     saveState();
                     renderList();
                 },
