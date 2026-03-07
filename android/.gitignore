@@ -99,3 +99,6 @@ app/src/main/assets/public
 app/src/main/assets/capacitor.config.json
 app/src/main/assets/capacitor.plugins.json
 app/src/main/res/xml/config.xml
+
+# [추가] 깃허브 액션 자동 업데이트와 충돌 방지용
+www/assets/rates.json
