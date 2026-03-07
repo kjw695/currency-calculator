@@ -231,7 +231,7 @@
         .list-item.selected .rate-info-text { color: var(--selected-text-color); opacity: 0.8; }
 
         .quick-btn-scroll {
-            background-color: var(--background-color); padding: 10px 0; overflow-x: auto;
+            background-color: var(--background-color); padding: 4px 0; overflow-x: auto;
             border-top: 1px solid var(--divider); flex-shrink: 0; overscroll-behavior-x: none;
         }
         .quick-btn-scroll::-webkit-scrollbar { display: none; }
@@ -428,13 +428,26 @@
         .selection-check-icon { font-size: 22px; color: var(--text-secondary); width: 24px; text-align: center; }
         .selection-check-icon.checked { color: var(--check-color); }
 
-        .history-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+       .history-date { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
         .history-val { font-size: 16px; font-weight: bold; color: var(--text-primary); }
-        .history-btn-group { display: flex; gap: 12px; }
-        .history-action-btn { border: none; background: none; font-size: 18px; cursor: pointer; padding: 6px; }
+        
+        /* 버튼 그룹 사이 간격을 12px -> 4px로 축소 */
+        .history-btn-group { display: flex; gap: 4px; }
+        
+        /* 버튼 자체의 내부 여백을 6px -> 4px로 축소하여 더 밀착되게 설정 */
+        .history-action-btn { border: none; background: none; font-size: 18px; cursor: pointer; padding: 4px; }
         .btn-share { color: var(--share-color); }
         .btn-edit { color: var(--edit-color); }
         .btn-del { color: var(--delete-color); }
+
+        /* [추가] 메모 버튼 및 텍스트 스타일 */
+        .btn-memo { color: #9C27B0; } 
+        .history-memo { 
+            font-size: 13px; color: var(--primary-color); 
+            margin-top: 4px; font-weight: 500;
+            display: -webkit-box; -webkit-line-clamp: 2; 
+            -webkit-box-orient: vertical; overflow: hidden; 
+        }
 
     </style>
 <script type="importmap">
@@ -523,7 +536,19 @@
         </div>
     </div>
 
+    <div id="memoEditPopup" class="edit-popup-overlay">
+        <div class="edit-popup-box">
+            <div class="edit-popup-title">메모 작성</div>
+            <input type="text" id="memoEditInput" class="edit-popup-input" style="font-size: 16px; font-weight: 500;" placeholder="어디에 쓰셨나요?">
+            <div class="edit-popup-btns">
+                <button id="btnCancelMemo" class="edit-popup-btn btn-cancel-edit">취소</button>
+                <button id="btnSaveMemo" class="edit-popup-btn btn-save-edit">저장</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="settingsModal" onclick="closeWithBack('settingsModal')">
+
         <div class="modal-content" style="height:auto;" onclick="event.stopPropagation()">
             <div class="modal-header">
                 <span class="modal-title" id="txtSettings">설정</span>
@@ -825,9 +850,10 @@
                     // 오프라인 상태에서도 캐시는 저장 (다음에 앱 켤 때 로딩 속도 향상)
                     if(!savedRates) {
                         localStorage.setItem('calc_rates', JSON.stringify(state.rates));
-                        localStorage.setItem('calc_last_ts', localData.last_update || now);
+                        localStorage.setItem('calc_last_ts', localData.last_update);
                     }
-                    updateTimeText(parseInt(localStorage.getItem('calc_last_ts') || now));
+                   const savedTime = localStorage.getItem('calc_last_ts');
+                    updateTimeText(savedTime ? parseInt(savedTime) : null);
                     calculate();
                     showToast("오프라인 모드");
                 } catch (assetError) {
@@ -1127,12 +1153,19 @@
                 return 0;
             }
         }
+let isDelLongPressed = false; // [추가] 꾹 누르기 상태 체크
 
         document.querySelectorAll('.keypad-btn').forEach(btn => {
             btn.onclick = (e) => {
                 e.preventDefault(); 
                 let val = btn.dataset.value; 
                 const active = state.activeCode;
+                
+                // [추가] 꾹 눌러서 연속으로 지워졌을 때는 일반 클릭 무시
+                if (val === 'DEL' && isDelLongPressed) {
+                    isDelLongPressed = false;
+                    return;
+                }
                 
                 let cur = state.amounts[active];
                 if (typeof cur === 'undefined' || cur === null || cur === 'NaN') {
@@ -1268,12 +1301,20 @@
         function closeWithBack(id) {
             if(document.getElementById(id).classList.contains('active')) history.back();
         }
-        window.onpopstate = function(event) {
+       window.onpopstate = function(event) {
             const editPopup = document.getElementById('customEditPopup');
             if (editPopup && editPopup.classList.contains('active')) {
                 editPopup.classList.remove('active');
                 return;
             }
+            
+            // [추가] 메모 팝업 뒤로 가기 처리
+            const memoPopup = document.getElementById('memoEditPopup');
+            if (memoPopup && memoPopup.classList.contains('active')) {
+                memoPopup.classList.remove('active');
+                return;
+            }
+            
             document.querySelectorAll('.modal-overlay.active').forEach(m => m.classList.remove('active'));
         };
 
@@ -1532,12 +1573,16 @@
                     const info = allCurrencies[h.code];
                     const div = document.createElement('div');
                     div.className = 'history-item';
+                    // [추가] 메모가 있으면 태그 생성
+                    const memoHtml = h.memo ? `<div class="history-memo"><i class="fas fa-hashtag" style="margin-right:4px;"></i>${h.memo}</div>` : '';
+
                     div.innerHTML = `
-                        <div>
+                        <div style="flex: 1; min-width: 0; padding-right: 10px;">
                             <div class="history-date">${h.date}</div>
                             <div class="history-val">${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${h.code}</div>
-                        </div>
+                            ${memoHtml} </div>
                         <div class="history-btn-group">
+                            <button class="history-action-btn btn-memo" onclick="editMemo(${originalIndex}); event.stopPropagation();" title="메모"><i class="fas fa-note-sticky"></i></button>
                             <button class="history-action-btn btn-share" onclick="shareHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-share-nodes"></i></button>
                             <button class="history-action-btn btn-edit" onclick="editHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-pen"></i></button>
                             <button class="history-action-btn btn-del" onclick="deleteHistory(${originalIndex}); event.stopPropagation();"><i class="fas fa-trash"></i></button>
@@ -1559,7 +1604,8 @@
             let text = `[${i18n[state.lang].shareTitle}]\n\n`;
             state.history.slice().reverse().forEach(h => {
                 const info = allCurrencies[h.code];
-                text += `${h.date} : ${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}\n`;
+                const memoText = h.memo ? ` (${h.memo})` : '';
+                text += `${h.date} : ${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}${memoText}\n`;
             });
 
             if (navigator.share) {
@@ -1572,7 +1618,8 @@
         function shareHistory(originalIndex) {
             const h = state.history[originalIndex];
             const info = allCurrencies[h.code];
-            const text = `[${i18n[state.lang].shareTitle}] ${h.date}\n${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}`;
+            const memoText = h.memo ? `\n메모: ${h.memo}` : '';
+            const text = `[${i18n[state.lang].shareTitle}] ${h.date}\n${info.symbol} ${parseFloat(h.amount).toLocaleString()} ${info.nameKo}${memoText}`;
             
             if (navigator.share) {
                 navigator.share({ title: '기록 공유', text: text }).catch(console.error);
@@ -1581,9 +1628,57 @@
             }
         }
         
+        // =======================
+        // 메모 편집 관련 로직
+        // =======================
+        let currentEditingMemoIndex = -1;
+
+        function editMemo(index) {
+            currentEditingMemoIndex = index;
+            const item = state.history[index];
+            const input = document.getElementById('memoEditInput');
+            input.value = item.memo || ''; 
+            
+            const modal = document.getElementById('memoEditPopup');
+            modal.classList.add('active');
+            history.pushState({modalId: 'memoEditPopup'}, null, '');
+            setTimeout(() => input.focus(), 300);
+        }
+
+        document.getElementById('btnCancelMemo').addEventListener('click', function() {
+            closeWithBack('memoEditPopup');
+        });
+
+        document.getElementById('btnSaveMemo').addEventListener('click', function() {
+            if(currentEditingMemoIndex === -1) return;
+            const input = document.getElementById('memoEditInput');
+            state.history[currentEditingMemoIndex].memo = input.value.trim();
+            saveState();
+            renderHistoryList(); 
+            closeWithBack('memoEditPopup');
+        });
+
+        // =======================
+        // [추가] 컴퓨터 키보드 Enter(저장), ESC(취소) 지원
+        // =======================
+        document.getElementById('memoEditInput').addEventListener('keydown', function(e) {
+            // 엔터키를 누르면 '저장' 버튼 클릭 효과
+            if (e.key === 'Enter') {
+                document.getElementById('btnSaveMemo').click();
+            } 
+            // ESC키를 누르면 '취소' 버튼 클릭 효과
+            else if (e.key === 'Escape' || e.key === 'Esc') {
+                document.getElementById('btnCancelMemo').click();
+            }
+        });
+
+        // =======================
+        // 기존 기록 수정 로직
+        // =======================
         let currentEditingIndex = -1;
 
         function editHistory(index) {
+
             currentEditingIndex = index;
             const item = state.history[index];
             const input = document.getElementById('customEditInput');
@@ -1683,7 +1778,65 @@
             indicator.style.top = '-40px'; 
         });
 
+        // ==========================================================
+        // [추가] 지우기(DEL) 버튼 꾹 눌러서 연속 지우기
+        // ==========================================================
+        const delBtn = document.querySelector('.keypad-btn[data-value="DEL"]');
+        let delTimeout;
+        let delInterval;
+
+        // 한 글자씩 지우는 실행 함수
+        function deleteOneChar() {
+            let cur = state.amounts[state.activeCode];
+            if (!cur || cur === '0') return; // 더 이상 지울 게 없으면 멈춤
+            
+            cur = cur.toString().slice(0, -1);
+            if (cur === '' || cur.length === 0) cur = '0';
+            
+            state.amounts[state.activeCode] = cur;
+            
+            // 화면 숫자 업데이트 및 계산 실행
+            const activeItem = document.querySelector(`.list-item[data-code="${state.activeCode}"] .amount-text`);
+            if (activeItem) activeItem.innerText = formatMoney(cur, state.activeCode);
+            calculateWithExpression();
+            
+            if (navigator.vibrate) navigator.vibrate(10); // 타격감(짧은 진동)
+        }
+
+        function startDelTimer(e) {
+            // 0.5초 동안 누르고 있으면 타이머 발동
+            delTimeout = setTimeout(() => {
+                isDelLongPressed = true; // 손 뗄 때 일반 클릭 무시용
+                deleteOneChar(); // 첫 1개 지우기
+                
+                // 이후 0.1초(100ms)마다 계속 연속해서 다다닥 지우기
+                delInterval = setInterval(() => {
+                    deleteOneChar();
+                }, 100); 
+                
+            }, 500); 
+        }
+
+        // 손을 떼면 연속 지우기 멈춤
+        function clearDelTimer() {
+            if (delTimeout) clearTimeout(delTimeout);
+            if (delInterval) clearInterval(delInterval);
+            delTimeout = null;
+            delInterval = null;
+        }
+
+        if (delBtn) {
+            delBtn.addEventListener('touchstart', startDelTimer, {passive: true});
+            delBtn.addEventListener('touchend', clearDelTimer);
+            delBtn.addEventListener('touchcancel', clearDelTimer);
+            
+            delBtn.addEventListener('mousedown', startDelTimer);
+            delBtn.addEventListener('mouseup', clearDelTimer);
+            delBtn.addEventListener('mouseleave', clearDelTimer);
+        }
+
         window.onload = async () => {
+
             loadState();
             await fetchRates();
             calculate();
